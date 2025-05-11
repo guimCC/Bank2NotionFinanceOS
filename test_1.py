@@ -17,6 +17,7 @@ EXPENSE_TYPES_DATABASE_ID   = "1f0d083e-48b1-817e-a433-e071435d6c50"
 MONTHS_DATABASE_ID          = "1f0d083e-48b1-8118-b9f4-f3a69ec4e6f1"
 INCOMES_DATABASE_ID         = "1f0d083e-48b1-8144-b862-d6a4cf9d4dd1"
 INCOME_TARGET_DATABASE_ID   = "1f0d083e-48b1-8189-8fe0-fc109090e3c6"
+DEBTS_DATABASE_ID           = "1f0d083e-48b1-81e2-9d6d-e92caa7a0f41"
 
 headers = {
     "Authorization": f"Bearer {tokenNotion}",
@@ -116,6 +117,37 @@ def list_months():
     
     return months
 
+######################### INCOME TYPES ########################
+def get_income_types():
+    """Retrieve all income types from the database"""
+    url = f"https://api.notion.com/v1/databases/{INCOME_TARGET_DATABASE_ID}/query"
+    
+    payload = {
+        "page_size": 100  # Adjust if you have more income types
+    }
+    
+    response = requests.post(url, headers=headers, json=payload)
+    return response.json()
+
+def list_income_types():
+    """List all available income types with their IDs"""
+    income_types_data = get_income_types()
+    
+    if "results" not in income_types_data:
+        print("Error retrieving income types:", income_types_data.get("message", ""))
+        return []
+    
+    income_types = []
+    for income_type in income_types_data["results"]:
+        title_property = "Income Type"
+        
+        if title_property and income_type["properties"][title_property]["title"]:
+            type_name = income_type["properties"][title_property]["title"][0]["text"]["content"]
+            type_id = income_type["id"]
+            income_types.append({"id": type_id, "name": type_name})
+    
+    return income_types
+
 ######################## EXPENSES ########################
 
 def create_expense(operation_date, name, concept, amount, account_id=None, expense_type_id=None, month_id=None):
@@ -213,7 +245,7 @@ def create_expense(operation_date, name, concept, amount, account_id=None, expen
 
 ######################## INCOMES ########################
 
-def create_income(operation_date, name, concept, amount, account_id=None, month_id=None):
+def create_income(operation_date, name, concept, amount, account_id=None, month_id=None, income_type_id=None):
     """Create a new income entry in Notion Incomes database"""
     
     # Format the date properly for Notion
@@ -249,7 +281,6 @@ def create_income(operation_date, name, concept, amount, account_id=None, month_
         }
     }
     
-    # Add account relation if provided (note: singular "Account" not plural)
     if account_id:
         properties["Account"] = {
             "relation": [
@@ -259,7 +290,15 @@ def create_income(operation_date, name, concept, amount, account_id=None, month_
             ]
         }
     
-    # Add month relation if provided (note: plural "Months")
+    if income_type_id:
+        properties["Incomes Type"] = {
+            "relation": [
+                {
+                    "id": income_type_id
+                }
+            ]
+        }
+    
     if month_id:
         properties["Months"] = {
             "relation": [
@@ -332,6 +371,11 @@ if __name__ == "__main__":
     for month in months:
         print(f"- {month['name']} (ID: {month['id']})")
     
+    print("\nAvailable income types:")
+    income_types = list_income_types()
+    for i, income_type in enumerate(income_types):
+        print(f"{i+1}. {income_type['name']}")
+    
     # test_result = create_expense(
     #     name="Test Expense",
     #     operation_date="01/05/2025",
@@ -349,6 +393,7 @@ if __name__ == "__main__":
         concept="Test income from API",
         amount="1500.00",
         account_id=accounts[0]["id"],
-        month_id=months[0]["id"]
+        month_id=months[0]["id"],
+        income_type_id=income_types[0]["id"]
     )
     print(json.dumps(test_result, indent=2))
