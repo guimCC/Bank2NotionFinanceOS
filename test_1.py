@@ -14,7 +14,9 @@ except FileNotFoundError:
 EXPENSES_DATABASE_ID        = "1f0d083e-48b1-81ca-be97-ebd634742618"
 ACCOUNTS_DATABASE_ID        = "1f0d083e-48b1-81c7-988c-d15cea95fe6d"
 EXPENSE_TYPES_DATABASE_ID   = "1f0d083e-48b1-817e-a433-e071435d6c50"
-MONTHS_DATABASE_ID          = "1f0d083e-48b1-8169-9d7b-fb8025113fe6"
+MONTHS_DATABASE_ID          = "1f0d083e-48b1-8118-b9f4-f3a69ec4e6f1"
+INCOMES_DATABASE_ID         = "1f0d083e-48b1-8144-b862-d6a4cf9d4dd1"
+INCOME_TARGET_DATABASE_ID   = "1f0d083e-48b1-8189-8fe0-fc109090e3c6"
 
 headers = {
     "Authorization": f"Bearer {tokenNotion}",
@@ -86,6 +88,34 @@ def list_expense_types():
     
     return expense_types
 
+######################### MONTHS ########################
+def get_months():
+    """Retrieve all months from the database"""
+    url = f"https://api.notion.com/v1/databases/{MONTHS_DATABASE_ID}/query"
+    payload = {"page_size": 100}
+    response = requests.post(url, headers=headers, json=payload)
+    return response.json()
+
+def list_months():
+    """List all available months with their IDs"""
+    months_data = get_months()
+    
+    if "results" not in months_data:
+        print("Error retrieving months:", months_data.get("message", ""))
+        return []
+    
+    months = []
+    for month in months_data["results"]:
+        # Find the title property (adjust based on your database structure)
+        title_property = "Month"
+        
+        if title_property and month["properties"][title_property]["title"]:
+            month_name = month["properties"][title_property]["title"][0]["text"]["content"]
+            month_id = month["id"]
+            months.append({"id": month_id, "name": month_name})
+    
+    return months
+
 ######################## EXPENSES ########################
 
 def create_expense(operation_date, name, concept, amount, account_id=None, expense_type_id=None, month_id=None):
@@ -142,7 +172,7 @@ def create_expense(operation_date, name, concept, amount, account_id=None, expen
     
     # Add expense type relation if provided
     if expense_type_id:
-        properties["Expense Type"] = {  # Make sure this matches exactly from your schema
+        properties["Expenses Type"] = {  # Make sure this matches exactly from your schema
             "relation": [
                 {
                     "id": expense_type_id
@@ -181,6 +211,86 @@ def create_expense(operation_date, name, concept, amount, account_id=None, expen
     
     return response.json()
 
+######################## INCOMES ########################
+
+def create_income(operation_date, name, concept, amount, account_id=None, month_id=None):
+    """Create a new income entry in Notion Incomes database"""
+    
+    # Format the date properly for Notion
+    iso_date = datetime.strptime(operation_date, "%d/%m/%Y").strftime("%Y-%m-%d")
+    
+    # Build the properties object
+    properties = {
+        "Income Name": {
+            "title": [
+                {
+                    "text": {
+                        "content": name
+                    }
+                }
+            ]
+        },
+        "Date": {
+            "date": {
+                "start": iso_date
+            }
+        },
+        "Note": {
+            "rich_text": [
+                {
+                    "text": {
+                        "content": concept
+                    }
+                }
+            ]
+        },
+        "Amount": {
+            "number": float(amount)
+        }
+    }
+    
+    # Add account relation if provided (note: singular "Account" not plural)
+    if account_id:
+        properties["Account"] = {
+            "relation": [
+                {
+                    "id": account_id
+                }
+            ]
+        }
+    
+    # Add month relation if provided (note: plural "Months")
+    if month_id:
+        properties["Months"] = {
+            "relation": [
+                {
+                    "id": month_id
+                }
+            ]
+        }
+    
+    # Prepare the payload
+    payload = {
+        "parent": {"database_id": INCOMES_DATABASE_ID},
+        "properties": properties,
+        "icon": {
+            "type": "external",
+            "external": {
+                "url": "https://www.notion.so/icons/arrow-down_green.svg"
+            }
+        }
+    }
+    
+    # Send the request to create the page
+    response = requests.post(
+        "https://api.notion.com/v1/pages",
+        headers=headers,
+        json=payload
+    )
+    
+    return response.json()
+
+
 def get_database_schema(database_id):
     """Get the schema of a database to see exact property names"""
     url = f"https://api.notion.com/v1/databases/{database_id}"
@@ -205,23 +315,40 @@ if __name__ == "__main__":
     #         process_csv_row(row)
     
     # For testing, just create one expense
+    get_database_schema(INCOMES_DATABASE_ID)
     
     print("Available accounts:")
     accounts = list_accounts()
     for account in accounts:
         print(f"- {account['name']} (ID: {account['id']})")
         
-    print("\nAvailable expense types:")
-    expense_types = list_expense_types()
-    for expense_type in expense_types:
-        print(f"- {expense_type['name']} (ID: {expense_type['id']})")
+    # print("\nAvailable expense types:")
+    # expense_types = list_expense_types()
+    # for expense_type in expense_types:
+    #     print(f"- {expense_type['name']} (ID: {expense_type['id']})")
+        
+    print("\nAvailable months:")
+    months = list_months()
+    for month in months:
+        print(f"- {month['name']} (ID: {month['id']})")
     
-    test_result = create_expense(
-        name="Test Expense",
+    # test_result = create_expense(
+    #     name="Test Expense",
+    #     operation_date="01/05/2025",
+    #     concept="Test expense from API",
+    #     amount="-24.99",
+    #     account_id=accounts[0]["id"],
+    #     expense_type_id=expense_types[0]["id"],
+    #     month_id=months[0]["id"]
+    # )
+    # print(json.dumps(test_result, indent=2))
+    
+    test_result = create_income(
+        name="Test Income",
         operation_date="01/05/2025",
-        concept="Test expense from API",
-        amount="-24.99",
-        account_id=accounts[0]["id"],  # Use the first account for testing
-        expense_type_id=expense_types[0]["id"],  # Use the first expense type for testing
+        concept="Test income from API",
+        amount="1500.00",
+        account_id=accounts[0]["id"],
+        month_id=months[0]["id"]
     )
     print(json.dumps(test_result, indent=2))
