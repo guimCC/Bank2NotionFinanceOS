@@ -6,3 +6,10 @@ venv/
 
 # cache
 backend/__pycache__/
+backend/utils/__pycache__/
+frontend/.vite/deps
+
+# data
+*.csv
+csv_parser.py
+
