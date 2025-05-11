@@ -18,6 +18,7 @@ MONTHS_DATABASE_ID          = "1f0d083e-48b1-8118-b9f4-f3a69ec4e6f1"
 INCOMES_DATABASE_ID         = "1f0d083e-48b1-8144-b862-d6a4cf9d4dd1"
 INCOME_TARGET_DATABASE_ID   = "1f0d083e-48b1-8189-8fe0-fc109090e3c6"
 DEBTS_DATABASE_ID           = "1f0d083e-48b1-81e2-9d6d-e92caa7a0f41"
+SUBSCRIPTIONS_DATABASE_ID   = "1f0d083e-48b1-81fe-93eb-c687371692a4"
 
 headers = {
     "Authorization": f"Bearer {tokenNotion}",
@@ -148,9 +149,71 @@ def list_income_types():
     
     return income_types
 
+######################### SUBSCRIPTIONS ########################
+def get_subscriptions():
+    """Retrieve all subscriptions from the database"""
+    url = f"https://api.notion.com/v1/databases/{SUBSCRIPTIONS_DATABASE_ID}/query"
+    
+    payload = {
+        "page_size": 100
+    }
+    
+    response = requests.post(url, headers=headers, json=payload)
+    return response.json()
+
+def list_subscriptions():
+    """List all available subscriptions with their IDs"""
+    subscriptions_data = get_subscriptions()
+    
+    if "results" not in subscriptions_data:
+        print("Error retrieving subscriptions:", subscriptions_data.get("message", ""))
+        return []
+    
+    subscriptions = []
+    for subscription in subscriptions_data["results"]:
+        title_property = "Name"
+        
+        if title_property and subscription["properties"][title_property]["title"]:
+            sub_name = subscription["properties"][title_property]["title"][0]["text"]["content"]
+            sub_id = subscription["id"]
+            subscriptions.append({"id": sub_id, "name": sub_name})
+    
+    return subscriptions
+
+######################### DEBTS ########################
+def get_debts():
+    """Retrieve all debts from the database"""
+    url = f"https://api.notion.com/v1/databases/{DEBTS_DATABASE_ID}/query"
+    
+    payload = {
+        "page_size": 100
+    }
+    
+    response = requests.post(url, headers=headers, json=payload)
+    return response.json()
+
+def list_debts():
+    """List all available debts with their IDs"""
+    debts_data = get_debts()
+    
+    if "results" not in debts_data:
+        print("Error retrieving debts:", debts_data.get("message", ""))
+        return []
+    
+    debts = []
+    for debt in debts_data["results"]:
+        title_property = "Debt"
+        
+        if title_property and debt["properties"][title_property]["title"]:
+            debt_name = debt["properties"][title_property]["title"][0]["text"]["content"]
+            debt_id = debt["id"]
+            debts.append({"id": debt_id, "name": debt_name})
+    
+    return debts
+
 ######################## EXPENSES ########################
 
-def create_expense(operation_date, name, concept, amount, account_id=None, expense_type_id=None, month_id=None):
+def create_expense(operation_date, name, concept, amount, account_id=None, expense_type_id=None, month_id=None, subscription_id=None, debt_id=None):
     """Create a new expense entry in Notion Expenses database"""
     
     # Format the date properly for Notion
@@ -218,6 +281,26 @@ def create_expense(operation_date, name, concept, amount, account_id=None, expen
             "relation": [
                 {
                     "id": month_id
+                }
+            ]
+        }
+    
+    # Add subscription relation if provided
+    if subscription_id:
+        properties["Subscription"] = {  # Make sure this matches exactly from your schema
+            "relation": [
+                {
+                    "id": subscription_id
+                }
+            ]
+        }
+    
+    # Add debt relation if provided
+    if debt_id:
+        properties["Debts"] = {  # Make sure this matches exactly from your schema
+            "relation": [
+                {
+                    "id": debt_id
                 }
             ]
         }
@@ -361,39 +444,51 @@ if __name__ == "__main__":
     for account in accounts:
         print(f"- {account['name']} (ID: {account['id']})")
         
-    # print("\nAvailable expense types:")
-    # expense_types = list_expense_types()
-    # for expense_type in expense_types:
-    #     print(f"- {expense_type['name']} (ID: {expense_type['id']})")
+    print("\nAvailable expense types:")
+    expense_types = list_expense_types()
+    for expense_type in expense_types:
+        print(f"- {expense_type['name']} (ID: {expense_type['id']})")
         
     print("\nAvailable months:")
     months = list_months()
     for month in months:
         print(f"- {month['name']} (ID: {month['id']})")
     
-    print("\nAvailable income types:")
-    income_types = list_income_types()
-    for i, income_type in enumerate(income_types):
-        print(f"{i+1}. {income_type['name']}")
+    # print("\nAvailable income types:")
+    # income_types = list_income_types()
+    # for i, income_type in enumerate(income_types):
+    #     print(f"{i+1}. {income_type['name']}")
     
-    # test_result = create_expense(
-    #     name="Test Expense",
-    #     operation_date="01/05/2025",
-    #     concept="Test expense from API",
-    #     amount="-24.99",
-    #     account_id=accounts[0]["id"],
-    #     expense_type_id=expense_types[0]["id"],
-    #     month_id=months[0]["id"]
-    # )
-    # print(json.dumps(test_result, indent=2))
+    print("\nAvailable subscriptions:")
+    subscriptions = list_subscriptions()
+    for i, sub in enumerate(subscriptions):
+        print(f"{i+1}. {sub['name']}")
     
-    test_result = create_income(
-        name="Test Income",
+    print("\nAvailable debts:")
+    debts = list_debts()
+    for i, debt in enumerate(debts):
+        print(f"{i+1}. {debt['name']}")
+    
+    test_result = create_expense(
+        name="Test Expense",
         operation_date="01/05/2025",
-        concept="Test income from API",
-        amount="1500.00",
+        concept="Test expense from API",
+        amount="-24.99",
         account_id=accounts[0]["id"],
-        month_id=months[0]["id"],
-        income_type_id=income_types[0]["id"]
+        expense_type_id=expense_types[0]["id"],
+        month_id=months[0]["id"], 
+        subscription_id=subscriptions[0]["id"],
+        debt_id=debts[0]["id"]
     )
     print(json.dumps(test_result, indent=2))
+    
+    # test_result = create_income(
+    #     name="Test Income",
+    #     operation_date="01/05/2025",
+    #     concept="Test income from API",
+    #     amount="1500.00",
+    #     account_id=accounts[0]["id"],
+    #     month_id=months[0]["id"],
+    #     income_type_id=income_types[0]["id"]
+    # )
+    # print(json.dumps(test_result, indent=2))
