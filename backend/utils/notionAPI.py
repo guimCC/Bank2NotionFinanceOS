@@ -5,7 +5,7 @@ import os
 
 # Load Notion token from file
 try:
-    with open("../../api_token.txt", "r") as token_file:
+    with open("../api_token.txt", "r") as token_file:
         tokenNotion = token_file.read().strip()
 except FileNotFoundError:
     print("Error: api_token.txt file not found")
@@ -29,7 +29,7 @@ def load_database_ids(file_path):
         exit(1)
 
 # Load database IDs from CSV file
-csv_path = "../../database_ids.csv"
+csv_path = "../database_ids.csv"
 db_ids = load_database_ids(csv_path)
 
 # Set variables for each database ID
@@ -268,7 +268,7 @@ def list_savings():
 
 ######################## EXPENSES ########################
 
-def create_expense(operation_date, name, concept, amount, account_id=None, expense_type_id=None, month_id=None, subscription_id=None, debt_id=None):
+def create_expense(operation_date, name, concept, amount, account_id=None, expense_type_id=None, month_id=None, subscription_id=None, debt_id=None, split=False, subs=False):
     """Create a new expense entry in Notion Expenses database"""
     
     # Format the date properly for Notion
@@ -303,10 +303,10 @@ def create_expense(operation_date, name, concept, amount, account_id=None, expen
             "number": float(amount)
         },
         "Split": {
-            "checkbox": False
+            "checkbox": split
         },
         "Subs": {
-            "checkbox": False
+            "checkbox": subs
         }
     }
     
@@ -650,7 +650,7 @@ if __name__ == "__main__":
     #     name="Test Expense",
     #     operation_date="01/05/2025",
     #     concept="Test expense from API",
-    #     amount="-24.99",
+    #     amount="24.99",
     #     account_id=accounts[0]["id"],
     #     expense_type_id=expense_types[0]["id"],
     #     month_id=months[0]["id"], 

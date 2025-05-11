@@ -3,3 +3,6 @@ database_ids.csv
 
 # venv
 venv/
+
+# cache
+backend/__pycache__/
