@@ -268,11 +268,11 @@ def list_savings():
 
 ######################## EXPENSES ########################
 
-def create_expense(operation_date, name, concept, amount, account_id=None, expense_type_id=None, month_id=None, subscription_id=None, debt_id=None, split=False, subs=False):
+def create_expense(date, name, concept, amount, account_id=None, expense_type_id=None, month_id=None, subscription_id=None, debt_id=None, split=False, subs=False):
     """Create a new expense entry in Notion Expenses database"""
     
     # Format the date properly for Notion
-    iso_date = datetime.strptime(operation_date, "%d/%m/%Y").strftime("%Y-%m-%d")
+    iso_date = date
     
     # Build the properties object
     properties = {
@@ -383,11 +383,11 @@ def create_expense(operation_date, name, concept, amount, account_id=None, expen
 
 ######################## INCOMES ########################
 
-def create_income(operation_date, name, concept, amount, account_id=None, month_id=None, income_type_id=None):
+def create_income(date, name, concept, amount, account_id=None, month_id=None, income_type_id=None):
     """Create a new income entry in Notion Incomes database"""
     
     # Format the date properly for Notion
-    iso_date = datetime.strptime(operation_date, "%d/%m/%Y").strftime("%Y-%m-%d")
+    iso_date = date
     
     # Build the properties object
     properties = {
@@ -470,7 +470,7 @@ def create_income(operation_date, name, concept, amount, account_id=None, month_
 ######################### TRANSFERS ########################
 def create_transfer(
     name,
-    operation_date, 
+    date, 
     amount, 
     from_account_id=None, 
     from_saving_id=None, 
@@ -482,7 +482,7 @@ def create_transfer(
     """Create a new transfer entry in Notion Transfer database"""
     
     # Format the date properly for Notion
-    iso_date = datetime.strptime(operation_date, "%d/%m/%Y").strftime("%Y-%m-%d")
+    iso_date = date
     
     # Build the properties object
     properties = {

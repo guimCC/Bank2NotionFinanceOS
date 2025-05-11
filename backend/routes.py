@@ -1,41 +1,51 @@
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
-from typing import List, Dict, Any, Optional
+from typing import List, Optional, Any # Dict might not be needed directly in signatures now
+
+# Import models from your models.py file
 from models import (
-    AccountBase, ExpenseTypeBase, MonthBase, IncomeTypeBase,
-    SubscriptionBase, DebtBase, SavingBase, ExpenseCreate, 
-    IncomeCreate, TransferCreate, ResponseModel, CSVProcessResponse, TransactionEntry
-)
-from utils.notionAPI import (
-    # Account functions
-    list_accounts,
-    
-    # Expense functions
-    list_expense_types,
-    create_expense,
-    
-    # Income functions
-    list_income_types,
-    create_income,
-    
-    # Month functions
-    list_months,
-    
-    # Subscription functions
-    list_subscriptions,
-    
-    # Debt functions
-    list_debts,
-    
-    # Savings functions
-    list_savings,
-    
-    # Transfer functions
-    create_transfer
+    # Base types for GET requests (listing options)
+    AccountBase,
+    ExpenseTypeBase,
+    MonthBase,
+    IncomeTypeBase,
+    SubscriptionBase,
+    DebtBase,
+    SavingBase,
+
+    # Payloads for CREATING entries in Notion (used within /save-transaction)
+    ExpenseCreatePayload,
+    IncomeCreatePayload,
+    TransferCreatePayload, # Note: If your create_transfer function in notionAPI expects fields matching this, this is correct.
+
+    # General API response structure
+    ResponseModel,
+
+    # For CSV processing
+    CSVProcessResponse, # This is the response from /process-csv
+    TransactionEntry    # This is the model for an individual entry that /process-csv returns in a list,
+                        # and also what /save-transaction will receive from the frontend.
 )
 
+# Your notionAPI functions (ensure these are correctly imported)
+from utils.notionAPI import (
+    list_accounts,
+    list_expense_types,
+    create_expense, # Takes parameters matching ExpenseCreatePayload
+    list_income_types,
+    create_income,  # Takes parameters matching IncomeCreatePayload
+    list_months,
+    list_subscriptions,
+    list_debts,
+    list_savings,
+    create_transfer # Takes parameters matching TransferCreatePayload
+)
+
+# Your CSV processing functions
 from utils.csv_processor import (
-    process_csv, categorize_transaction, 
-    get_month_from_date, update_csv_with_loaded_flag
+    process_csv # Takes CSV content bytes and original filename
+    # categorize_transaction is used internally by process_csv
+    # get_month_from_date is used internally
+    # update_csv_with_loaded_flag is REMOVED
 )
 
 router = APIRouter()
@@ -48,189 +58,96 @@ async def root():
         message="Financial Management API is running"
     )
 
-# ==================== Account Routes ====================
+# ==================== Listing Routes (GET) ====================
 @router.get("/accounts", response_model=List[AccountBase])
-async def get_accounts():
+async def get_accounts_route(): # Renamed to avoid conflict if you had a function named get_accounts
     try:
-        accounts = list_accounts()
-        return accounts
+        return list_accounts()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ==================== Expense Routes ====================
 @router.get("/expense-types", response_model=List[ExpenseTypeBase])
-async def get_expense_types():
+async def get_expense_types_route():
     try:
-        expense_types = list_expense_types()
-        return expense_types
+        return list_expense_types()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/expenses", response_model=ResponseModel)
-async def add_expense(expense: ExpenseCreate):
-    try:
-        result = create_expense(
-            operation_date=expense.operation_date,
-            name=expense.name,
-            concept=expense.concept,
-            amount=expense.amount,
-            account_id=expense.account_id,
-            expense_type_id=expense.expense_type_id,
-            month_id=expense.month_id,
-            subscription_id=expense.subscription_id,
-            debt_id=expense.debt_id
-        )
-        
-        if "object" in result and result["object"] == "error":
-            return ResponseModel(
-                status="error",
-                message=result.get("message", "Unknown error"),
-                data=result
-            )
-            
-        return ResponseModel(
-            status="success",
-            message="Expense created successfully",
-            data=result
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# ==================== Income Routes ====================
 @router.get("/income-types", response_model=List[IncomeTypeBase])
-async def get_income_types():
+async def get_income_types_route():
     try:
-        income_types = list_income_types()
-        return income_types
+        return list_income_types()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/incomes", response_model=ResponseModel)
-async def add_income(income: IncomeCreate):
-    try:
-        result = create_income(
-            operation_date=income.operation_date,
-            name=income.name,
-            concept=income.concept,
-            amount=income.amount,
-            account_id=income.account_id,
-            month_id=income.month_id,
-            income_type_id=income.income_type_id
-        )
-        
-        if "object" in result and result["object"] == "error":
-            return ResponseModel(
-                status="error",
-                message=result.get("message", "Unknown error"),
-                data=result
-            )
-            
-        return ResponseModel(
-            status="success",
-            message="Income created successfully",
-            data=result
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# ==================== Month Routes ====================
 @router.get("/months", response_model=List[MonthBase])
-async def get_months():
+async def get_months_route():
     try:
-        months = list_months()
-        return months
+        return list_months()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ==================== Subscription Routes ====================
 @router.get("/subscriptions", response_model=List[SubscriptionBase])
-async def get_subscriptions():
+async def get_subscriptions_route():
     try:
-        subscriptions = list_subscriptions()
-        return subscriptions
+        return list_subscriptions()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ==================== Debt Routes ====================
 @router.get("/debts", response_model=List[DebtBase])
-async def get_debts():
+async def get_debts_route():
     try:
-        debts = list_debts()
-        return debts
+        return list_debts()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ==================== Savings Routes ====================
 @router.get("/savings", response_model=List[SavingBase])
-async def get_savings():
+async def get_savings_route():
     try:
-        savings = list_savings()
-        return savings
+        return list_savings()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ==================== Transfer Routes ====================
-@router.post("/transfers", response_model=ResponseModel)
-async def add_transfer(transfer: TransferCreate):
-    try:
-        result = create_transfer(
-            operation_date=transfer.operation_date,
-            amount=transfer.amount,
-            from_account_id=transfer.from_account_id,
-            from_saving_id=transfer.from_saving_id,
-            to_account_id=transfer.to_account_id,
-            to_saving_id=transfer.to_saving_id,
-            transfer_type=transfer.transfer_type,
-            month_id=transfer.month_id
-        )
-        
-        if "object" in result and result["object"] == "error":
-            return ResponseModel(
-                status="error",
-                message=result.get("message", "Unknown error"),
-                data=result
-            )
-            
-        return ResponseModel(
-            status="success",
-            message="Transfer created successfully",
-            data=result
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
-# ==================== CSV Processing Routes ====================
+# ==================== CSV Processing Route ====================
 @router.post("/process-csv", response_model=CSVProcessResponse)
-async def process_csv_file(file: UploadFile = File(...)):
-    """Process uploaded CSV file and return categorized transactions"""
+async def process_csv_file_route(file: UploadFile = File(...)):
     try:
-        # Read the CSV file
         contents = await file.read()
-        
-        # Process the CSV contents
-        processed_data = process_csv(contents)
-        
-        return CSVProcessResponse(
-            status="success",
-            message=f"Successfully processed {len(processed_data['entries'])} entries",
-            entries=processed_data["entries"],
-            stats=processed_data["stats"]
-        )
+        # The process_csv function in csv_processor.py should now take 'contents' and 'file.filename'
+        # and return a dictionary matching CSVProcessResponse structure.
+        processed_data_dict = process_csv(contents, file.filename)
+
+        # Validate and return (Pydantic handles validation here if types match)
+        return CSVProcessResponse(**processed_data_dict)
+    except ValueError as ve: # Catch specific errors like missing CSV headers
+        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
+        print(f"Error processing CSV: {type(e).__name__} - {str(e)}") # For debugging
+        # traceback.print_exc() # More detailed traceback for server logs
         raise HTTPException(status_code=500, detail=f"Error processing CSV: {str(e)}")
 
+
+# ==================== Save Transaction Route ====================
 @router.post("/save-transaction", response_model=ResponseModel)
-async def save_transaction(transaction: TransactionEntry):
-    """Save a single transaction to Notion based on its type"""
+async def save_transaction_route(transaction: TransactionEntry):
+    """
+    Receives a processed transaction entry from the frontend (which originated from the CSV)
+    and saves it to the appropriate Notion database.
+    """
+    print("aaaaaaaaaaaaaaaaaaa")
+    print("Received transaction for saving:", transaction.dict()) # For debugging
     try:
         result = None
-        
+        notion_response_data = None # To store the actual Notion response
+        print("Saving transaction:", transaction) # For debugging
         if transaction.type == "expense":
-            result = create_expense(
-                operation_date=transaction.date,
+            # Prepare payload for create_expense
+            payload = ExpenseCreatePayload(
+                date=transaction.date,
                 name=transaction.name,
                 concept=transaction.concept,
-                amount=transaction.amount,
+                amount=float(transaction.amount), # Convert string amount to float
                 account_id=transaction.account_id,
                 expense_type_id=transaction.expense_type_id,
                 month_id=transaction.month_id,
@@ -239,21 +156,24 @@ async def save_transaction(transaction: TransactionEntry):
                 split=transaction.split,
                 subs=transaction.subs
             )
+            
+            notion_response_data = create_expense(**payload.dict(exclude_none=True))
         elif transaction.type == "income":
-            result = create_income(
-                operation_date=transaction.date,
+            payload = IncomeCreatePayload(
+                date=transaction.date,
                 name=transaction.name,
                 concept=transaction.concept,
-                amount=transaction.amount,
+                amount=float(transaction.amount),
                 account_id=transaction.account_id,
                 month_id=transaction.month_id,
                 income_type_id=transaction.income_type_id
             )
+            notion_response_data = create_income(**payload.dict(exclude_none=True))
         elif transaction.type == "transfer":
-            result = create_transfer(
+            payload = TransferCreatePayload(
+                date=transaction.date,
                 name=transaction.name,
-                operation_date=transaction.date,
-                amount=transaction.amount,
+                amount=float(transaction.amount),
                 from_account_id=transaction.from_account_id,
                 from_saving_id=transaction.from_saving_id,
                 to_account_id=transaction.to_account_id,
@@ -261,51 +181,32 @@ async def save_transaction(transaction: TransactionEntry):
                 transfer_type=transaction.transfer_type,
                 month_id=transaction.month_id
             )
+            notion_response_data = create_transfer(**payload.dict(exclude_none=True))
         else:
+            raise HTTPException(status_code=400, detail=f"Unknown transaction type: {transaction.type}")
+
+        # Check Notion API response
+        if notion_response_data and notion_response_data.get("object") == "error":
+            error_message = notion_response_data.get("message", "Unknown error from Notion API")
+            print(f"Notion API Error for {transaction.type} ({transaction.name}): {error_message}") # Log error
+            print(f"Payload sent: {payload.model_dump_json(indent=2)}") # Log payload for debugging
+            # Consider returning a more specific error code if Notion provides one
             return ResponseModel(
                 status="error",
-                message=f"Unknown transaction type: {transaction.type}"
+                message=f"Notion API Error: {error_message}",
+                data=notion_response_data # Send full Notion error back if helpful
             )
-        
-        if "object" in result and result["object"] == "error":
-            return ResponseModel(
-                status="error",
-                message=result.get("message", "Unknown error"),
-                data=result
-            )
-            
-        # Mark as processed in the CSV file
-        if transaction.csv_row_id is not None:
-            update_csv_with_loaded_flag(transaction.csv_filename, transaction.csv_row_id)
-            
+            # Alternative: raise HTTPException(status_code=502, detail=f"Notion API Error: {error_message}")
+
+
         return ResponseModel(
             status="success",
-            message=f"{transaction.type.capitalize()} created successfully",
-            data=result
+            message=f"{transaction.type.capitalize()} '{transaction.name}' created successfully in Notion.",
+            data=notion_response_data # Return the Notion page object
         )
+    except ValueError as ve: # e.g. float conversion error
+        raise HTTPException(status_code=400, detail=f"Invalid data for transaction: {str(ve)}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.post("/mark-csv-loaded", response_model=ResponseModel)
-async def mark_csv_loaded(
-    filename: str = Form(...), 
-    row_id: int = Form(...),
-    date: str = Form(...), 
-    concept: str = Form(...), 
-    amount: str = Form(...)
-):
-    """Mark a specific row in a CSV file as loaded"""
-    try:
-        success = update_csv_with_loaded_flag(filename, row_id, date, concept, amount)
-        if success:
-            return ResponseModel(
-                status="success",
-                message="Transaction marked as loaded in CSV"
-            )
-        else:
-            return ResponseModel(
-                status="error",
-                message="Failed to mark transaction as loaded"
-            )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error saving transaction: {type(e).__name__} - {str(e)}")
+        # traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error saving transaction: {str(e)}")

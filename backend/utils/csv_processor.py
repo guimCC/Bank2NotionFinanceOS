@@ -52,15 +52,23 @@ def init_defaults():
     income_types = list_income_types()
     DEFAULT_INCOME_TYPE = income_types[0] if income_types else None
 
-def process_csv(contents: bytes) -> Dict:
+def process_csv(contents: bytes, original_filename: str) -> Dict:
     """Process CSV file contents and return categorized transactions"""
     # Initialize defaults if needed
     if DEFAULT_ACCOUNT is None:
         init_defaults()
-    
+    print("Processing CSV file...")
     # Parse CSV
-    csv_text = contents.decode('utf-8')
-    csv_reader = csv.DictReader(io.StringIO(csv_text))
+    csv_text = contents.decode('utf-8-sig') # Use utf-8-sig to handle potential BOM
+    csv_file_like = io.StringIO(csv_text)
+    csv_reader = csv.DictReader(csv_file_like)
+    
+    # Ensure fieldnames are as expected, otherwise raise error or handle
+    expected_headers = ['DATE', 'CONCEPT', 'IMPORT', 'LOADED']
+    if not all(h in csv_reader.fieldnames for h in expected_headers):
+        # Handle missing headers, e.g., raise ValueError or return error structure
+        missing = [h for h in expected_headers if h not in csv_reader.fieldnames]
+        raise ValueError(f"CSV is missing required headers: {', '.join(missing)}")
     
     # Get all required data from Notion for categorization
     accounts = list_accounts()
@@ -70,37 +78,73 @@ def process_csv(contents: bytes) -> Dict:
     subscriptions = list_subscriptions()
     debts = list_debts()
 
+    # print("Loaded Notion data for categorization")
+    # print(f"Accounts: {accounts}")
+    # print(f"Expense Types: {expense_types}")
+    # print(f"Income Types: {income_types}")
+    # print(f"Months: {months}")
+    # print(f"Subscriptions: {subscriptions}")
+    # print(f"Debts: {debts}")
     
     processed_entries = []
     stats = {
-        "total": 0,
-        "expenses": 0,
-        "incomes": 0,
-        "transfers": 0,
-        "unknown": 0,
-        "already_loaded": 0
+        "total_rows_in_csv": 0,
+        "processed_for_review": 0,
+        "already_loaded_in_csv": 0,
+        "expenses_found": 0,
+        "incomes_found": 0,
+        "transfers_found": 0,
+        "unknown_type": 0,
     }
     
-    for i, row in enumerate(csv_reader):
-        stats["total"] += 1
+    all_csv_rows = list(csv_reader) # Read all rows to get total count and allow indexing
+    print(f"Total rows in CSV: {len(all_csv_rows)}")
+    stats["total_rows_in_csv"] = len(all_csv_rows)
+
+    for i, row in enumerate(all_csv_rows):
+        # Skip already loaded entries based on 'LOADED' column in the *uploaded* CSV
+        print("processing row", row)
         
-        # Skip already loaded entries
-        if row.get('LOADED') == 'true' or row.get('LOADED') == '1':
-            stats["already_loaded"] += 1
+        loaded_val = str(row.get('LOADED', '')).strip().lower()
+        print(f"Row {i} loaded value: {loaded_val}")
+        
+        if loaded_val == 'true' or loaded_val == '1':
+            stats["already_loaded_in_csv"] += 1
             continue
         
-        # Process the entry
-        entry = categorize_transaction(row, i, accounts, expense_types, income_types, months, subscriptions, debts)
+        print("Row not loaded, processing...")
+        
+        entry = categorize_transaction(
+            row, 
+            i, 
+            accounts,           # Correct position
+            expense_types, 
+            income_types, 
+            months, 
+            subscriptions, 
+            debts,
+            original_filename   # Correct position - last parameter
+        )
+        print(f"Categorized entry: {entry}")
+        
         if entry:
             processed_entries.append(entry)
-            stats[entry.get("type", "unknown")] += 1
-        else:
-            stats["unknown"] += 1
+            entry_type = entry.get("type", "unknown_type")
+            if entry_type in stats: # e.g. expenses_found
+                 stats[f"{entry_type}s_found"] = stats.get(f"{entry_type}s_found", 0) + 1
+            else:
+                stats["unknown_type"] +=1
 
-    # Sort entries by date (oldest first)
-    processed_entries.sort(key=lambda x: datetime.strptime(x["date"], "%d/%m/%Y"))
+    print(f"Processed {len(processed_entries)} entries for review")
+    
+    stats["processed_for_review"] = len(processed_entries)
+    processed_entries.sort(key=lambda x: datetime.strptime(x["date"], "%Y-%m-%d"))
+    
+    print(f"Final stats: {processed_entries}")
     
     return {
+        "status": "success",  # Add this
+        "message": f"Successfully processed {len(processed_entries)} entries.",  # Add this
         "entries": processed_entries,
         "stats": stats
     }
@@ -113,7 +157,8 @@ def categorize_transaction(
     income_types: List[Dict[str, str]],
     months: List[Dict[str, str]],
     subscriptions: List[Dict[str, str]],
-    debts: List[Dict[str, str]]
+    debts: List[Dict[str, str]],
+    original_csv_filename: str
 ) -> Optional[Dict[str, Any]]:
     """Categorize a transaction row based on its content"""
     if not all(key in row for key in ['DATE', 'CONCEPT', 'IMPORT']):
@@ -137,13 +182,14 @@ def categorize_transaction(
     
     default_account_id = default_account["id"] if default_account else None
     
+    print("DATE", date)
     # Base transaction entry
     transaction = {
-        "csv_row_id": row_id,
-        "csv_filename": "transactions.csv",  # Default name, can be overridden
+        "csv_row_index": row_id,  # Change from csv_row_id
+        "original_csv_filename": original_csv_filename,  # Change from csv_filename
         "date": date,
         "concept": concept,
-        "amount": str(abs(amount)),  # Store as absolute value string
+        "amount": str(abs(amount)),
         "account_id": default_account_id,
         "month_id": month_id
     }
@@ -272,9 +318,9 @@ def get_month_from_date(date_str: str, months: List[Dict[str, str]]) -> Optional
     """Extract month from date string and find its ID"""
     try:
         # Assuming date_str is in format dd/mm/yyyy
-        dt = datetime.strptime(date_str, "%d/%m/%Y")
-        month_name = dt.strftime("%B")  # Full month name
-        year = dt.strftime("%Y")
+        dt = datetime.strptime(date_str, "%Y-%m-%d")
+        month_name = dt.strftime("%B")[:3]  # Full month name
+        year = dt.strftime("%Y")[2:]
         
         # Format to match your month names pattern (e.g., "May 2025")
         formatted_month = f"{month_name} {year}"
@@ -290,48 +336,3 @@ def get_month_from_date(date_str: str, months: List[Dict[str, str]]) -> Optional
         
     except Exception:
         return None
-
-def update_csv_with_loaded_flag(filename: str, row_id: int, date: str = None, concept: str = None, amount: str = None) -> bool:
-    """Update CSV file to mark a row as loaded"""
-    try:
-        # Assuming the CSV is in a specified directory
-        csv_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
-        os.makedirs(csv_dir, exist_ok=True)
-        
-        filepath = os.path.join(csv_dir, filename)
-        
-        # If file doesn't exist yet, it's a new CSV
-        if not os.path.exists(filepath):
-            return True
-            
-        # Read the existing CSV
-        rows = []
-        with open(filepath, 'r', newline='') as csvfile:
-            reader = csv.DictReader(csvfile)
-            fieldnames = reader.fieldnames
-            
-            # Ensure LOADED is in fieldnames
-            if 'LOADED' not in fieldnames:
-                fieldnames.append('LOADED')
-                
-            # Read all rows
-            for i, row in enumerate(reader):
-                if i == row_id:
-                    # This is our target row to mark as loaded
-                    # Double-check it's the right row if identifiers were provided
-                    if (date is None or row.get('DATE') == date) and \
-                       (concept is None or row.get('CONCEPT') == concept) and \
-                       (amount is None or row.get('IMPORT') == amount):
-                        row['LOADED'] = 'true'
-                rows.append(row)
-        
-        # Write back the updated CSV
-        with open(filepath, 'w', newline='') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(rows)
-            
-        return True
-    except Exception as e:
-        print(f"Error updating CSV: {e}")
-        return False
