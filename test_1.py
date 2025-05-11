@@ -12,12 +12,48 @@ except FileNotFoundError:
 
 
 EXPENSES_DATABASE_ID = "1f0d083e-48b1-81ca-be97-ebd634742618"
+ACCOUNTS_DATABASE_ID = "1f0d083e-48b1-81c7-988c-d15cea95fe6d"
+
 
 headers = {
     "Authorization": f"Bearer {tokenNotion}",
     "Content-Type": "application/json",
     "Notion-Version": "2021-08-16"
 }
+
+######################## ACCOUNTS ########################
+
+def get_accounts():
+    """Retrieve all accounts from the Accounts database"""
+    url = f"https://api.notion.com/v1/databases/{ACCOUNTS_DATABASE_ID}/query"
+    
+    payload = {
+        "page_size": 10
+    }
+    
+    response = requests.post(url, headers=headers, json=payload)
+    return response.json()
+
+def list_accounts():
+    """List all available accounts with their IDs"""
+    accounts_data = get_accounts()
+    
+    if "results" not in accounts_data:
+        print("Error retrieving accounts:", accounts_data.get("message", ""))
+        return []
+    
+    accounts = []
+    for account in accounts_data["results"]:
+        title_property = "Account Name"
+        
+        if title_property and account["properties"][title_property]["title"]:
+            account_name = account["properties"][title_property]["title"][0]["text"]["content"]
+            account_id = account["id"]
+            accounts.append({"id": account_id, "name": account_name})
+    
+    return accounts
+
+######################## EXPENSES ########################
 
 def create_expense(operation_date, name, concept, amount, account_id=None, expense_type_id=None):
     """Create a new expense entry in Notion Expenses database"""
@@ -63,7 +99,7 @@ def create_expense(operation_date, name, concept, amount, account_id=None, expen
     
     # Add account relation if provided
     if account_id:
-        properties["accounts"] = {
+        properties["Accounts"] = {
             "relation": [
                 {
                     "id": account_id
@@ -102,6 +138,22 @@ def create_expense(operation_date, name, concept, amount, account_id=None, expen
     
     return response.json()
 
+def get_database_schema(database_id):
+    """Get the schema of a database to see exact property names"""
+    url = f"https://api.notion.com/v1/databases/{database_id}"
+    response = requests.get(url, headers=headers)
+    data = response.json()
+    
+    if "properties" in data:
+        print("\nAvailable properties:")
+        for prop_name, prop_data in data["properties"].items():
+            prop_type = prop_data["type"]
+            print(f"- {prop_name} ({prop_type})")
+    else:
+        print("Error retrieving database schema:", data.get("message", ""))
+    
+    return data
+
 if __name__ == "__main__":
     # Read CSV file
     # with open("your_transactions.csv", "r") as file:
@@ -110,10 +162,16 @@ if __name__ == "__main__":
     #         process_csv_row(row)
     
     # For testing, just create one expense
+    get_database_schema(EXPENSES_DATABASE_ID)
+    
+    print("Available accounts:")
+    accounts = list_accounts()
+    
     test_result = create_expense(
         name="Test Expense",
         operation_date="01/05/2025",
         concept="Test expense from API",
-        amount="-24.99"
+        amount="-24.99",
+        account_id=accounts[0]["id"],  # Use the first account for testing
     )
     print(json.dumps(test_result, indent=2))
