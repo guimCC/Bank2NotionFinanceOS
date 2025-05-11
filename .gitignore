@@ -1,1 +1,5 @@
 api_token.txt
+database_ids.csv
+
+# venv
+venv/
