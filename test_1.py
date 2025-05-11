@@ -11,9 +11,10 @@ except FileNotFoundError:
     exit(1)
 
 
-EXPENSES_DATABASE_ID = "1f0d083e-48b1-81ca-be97-ebd634742618"
-ACCOUNTS_DATABASE_ID = "1f0d083e-48b1-81c7-988c-d15cea95fe6d"
-
+EXPENSES_DATABASE_ID        = "1f0d083e-48b1-81ca-be97-ebd634742618"
+ACCOUNTS_DATABASE_ID        = "1f0d083e-48b1-81c7-988c-d15cea95fe6d"
+EXPENSE_TYPES_DATABASE_ID   = "1f0d083e-48b1-817e-a433-e071435d6c50"
+MONTHS_DATABASE_ID          = "1f0d083e-48b1-8169-9d7b-fb8025113fe6"
 
 headers = {
     "Authorization": f"Bearer {tokenNotion}",
@@ -53,9 +54,41 @@ def list_accounts():
     
     return accounts
 
+######################### EXPENSE TYPES ########################
+def get_expense_types():
+    """Retrieve all expense types from the database"""
+    url = f"https://api.notion.com/v1/databases/{EXPENSE_TYPES_DATABASE_ID}/query"
+    
+    payload = {
+        "page_size": 100  # Adjust if you have more expense types
+    }
+    
+    response = requests.post(url, headers=headers, json=payload)
+    return response.json()
+
+def list_expense_types():
+    """List all available expense types with their IDs"""
+    expense_types_data = get_expense_types()
+    
+    if "results" not in expense_types_data:
+        print("Error retrieving expense types:", expense_types_data.get("message", ""))
+        return []
+    
+    expense_types = []
+    for expense_type in expense_types_data["results"]:
+        # Find the title property (adjust based on your database structure)
+        title_property = "Expense Type"
+        
+        if title_property and expense_type["properties"][title_property]["title"]:
+            type_name = expense_type["properties"][title_property]["title"][0]["text"]["content"]
+            type_id = expense_type["id"]
+            expense_types.append({"id": type_id, "name": type_name})
+    
+    return expense_types
+
 ######################## EXPENSES ########################
 
-def create_expense(operation_date, name, concept, amount, account_id=None, expense_type_id=None):
+def create_expense(operation_date, name, concept, amount, account_id=None, expense_type_id=None, month_id=None):
     """Create a new expense entry in Notion Expenses database"""
     
     # Format the date properly for Notion
@@ -109,10 +142,20 @@ def create_expense(operation_date, name, concept, amount, account_id=None, expen
     
     # Add expense type relation if provided
     if expense_type_id:
-        properties["expense type"] = {
+        properties["Expense Type"] = {  # Make sure this matches exactly from your schema
             "relation": [
                 {
                     "id": expense_type_id
+                }
+            ]
+        }
+    
+    # Add month relation if provided
+    if month_id:
+        properties["Month"] = {  # Make sure this matches exactly from your schema
+            "relation": [
+                {
+                    "id": month_id
                 }
             ]
         }
@@ -162,10 +205,16 @@ if __name__ == "__main__":
     #         process_csv_row(row)
     
     # For testing, just create one expense
-    get_database_schema(EXPENSES_DATABASE_ID)
     
     print("Available accounts:")
     accounts = list_accounts()
+    for account in accounts:
+        print(f"- {account['name']} (ID: {account['id']})")
+        
+    print("\nAvailable expense types:")
+    expense_types = list_expense_types()
+    for expense_type in expense_types:
+        print(f"- {expense_type['name']} (ID: {expense_type['id']})")
     
     test_result = create_expense(
         name="Test Expense",
@@ -173,5 +222,6 @@ if __name__ == "__main__":
         concept="Test expense from API",
         amount="-24.99",
         account_id=accounts[0]["id"],  # Use the first account for testing
+        expense_type_id=expense_types[0]["id"],  # Use the first expense type for testing
     )
     print(json.dumps(test_result, indent=2))
