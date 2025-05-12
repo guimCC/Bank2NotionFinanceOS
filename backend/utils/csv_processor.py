@@ -22,7 +22,13 @@ EXPENSE_KEYWORDS = {
     'jimman': 'Party',
     'aramark': 'Coffee',
     'bar': 'Restaurant',
-    'saf': 'Health - Gym - Beauty'
+    '(saf)': 'Health - Gym - Beauty',
+    'perruquers': 'Health - Gym - Beauty',
+    'uber': 'Restaurant',
+    'donald': 'Restaurant',
+    'facultat': 'Coffee',
+    'vending': 'Coffee',
+    'cafe': 'Coffee',
 }
 
 INCOME_KEYWORDS = {
@@ -166,11 +172,12 @@ def categorize_transaction(
     
     date = row['DATE']
     concept = row['CONCEPT']
-    amount_str = row['IMPORT'].replace(',', '.')  # Ensure proper decimal format
-    
+    amount_str = row['IMPORT']
     try:
-        amount = float(amount_str)
-    except ValueError:
+        # Use the new fix_number_format function instead of direct float conversion
+        amount = fix_number_format(amount_str)
+    except ValueError as e:
+        print(f"Error parsing amount '{amount_str}': {e}")
         return None
     
     # Get month id from date
@@ -336,3 +343,21 @@ def get_month_from_date(date_str: str, months: List[Dict[str, str]]) -> Optional
         
     except Exception:
         return None
+
+def fix_number_format(value_str: str) -> float:
+    """
+    Fix problematic number format with multiple decimal points.
+    Example: converts "1.410.00" to 1410.00
+    """
+    # First replace any commas with dots for consistency
+    value_str = value_str.replace(',', '.')
+    
+    # If there are multiple dots, treat all but the last as thousand separators
+    parts = value_str.split('.')
+    if len(parts) > 2:  # More than one dot exists
+        integer_part = ''.join(parts[:-1])  # Join all parts except the last
+        decimal_part = parts[-1]            # Last part is the decimal
+        return float(f"{integer_part}.{decimal_part}")
+    
+    # Regular case with only one or no decimal point
+    return float(value_str)

@@ -441,3 +441,41 @@ button.button-secondary:hover {
     .card h2 { font-size: 1.25rem; }
     .card h3 { font-size: 1.1rem; }
 }
+
+/* Styles for shortcut indicators */
+.shortcut-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.3em;
+  height: 1.3em;
+  border-radius: 0.25em; /* Rounded square */
+  background-color: #4a5568; /* A slightly lighter gray for dark mode */
+  color: #e2e8f0; /* Light text for dark mode */
+  font-size: 0.75em;
+  font-weight: bold;
+  margin-right: 8px;
+  border: 1px solid #718096; /* Medium gray border for dark mode */
+  line-height: 1.3em; /* Vertically center text */
+  user-select: none; /* Prevent selecting the indicator number */
+}
+
+/* Ensure labels with indicators align well */
+.form-group > label {
+  display: flex; /* Aligns indicator and text nicely */
+  align-items: center;
+  /* margin-bottom: 0.25rem; /* Optional: small space between label and input */
+}
+
+.checkbox-group { /* Specific alignment for checkbox groups */
+  display: flex;
+  align-items: center;
+}
+
+.checkbox-group input[type="checkbox"] {
+  margin-right: 0.5rem; /* Space between checkbox and its label */
+}
+
+.checkbox-group > label { /* For checkbox labels */
+  margin-bottom: 0; /* Reset margin if .form-group > label has it */
+}
