@@ -92,6 +92,7 @@ def process_csv(contents: bytes, original_filename: str) -> Dict:
     # print(f"Subscriptions: {subscriptions}")
     # print(f"Debts: {debts}")
     
+    
     processed_entries = []
     stats = {
         "total_rows_in_csv": 0,
@@ -109,16 +110,16 @@ def process_csv(contents: bytes, original_filename: str) -> Dict:
 
     for i, row in enumerate(all_csv_rows):
         # Skip already loaded entries based on 'LOADED' column in the *uploaded* CSV
-        print("processing row", row)
+        # print("processing row", row)
         
         loaded_val = str(row.get('LOADED', '')).strip().lower()
-        print(f"Row {i} loaded value: {loaded_val}")
+        # print(f"Row {i} loaded value: {loaded_val}")
         
         if loaded_val == 'true' or loaded_val == '1':
             stats["already_loaded_in_csv"] += 1
             continue
         
-        print("Row not loaded, processing...")
+        # print("Row not loaded, processing...")
         
         entry = categorize_transaction(
             row, 
@@ -131,7 +132,7 @@ def process_csv(contents: bytes, original_filename: str) -> Dict:
             debts,
             original_filename   # Correct position - last parameter
         )
-        print(f"Categorized entry: {entry}")
+        # print(f"Categorized entry: {entry}")
         
         if entry:
             processed_entries.append(entry)
@@ -141,12 +142,12 @@ def process_csv(contents: bytes, original_filename: str) -> Dict:
             else:
                 stats["unknown_type"] +=1
 
-    print(f"Processed {len(processed_entries)} entries for review")
+    # print(f"Processed {len(processed_entries)} entries for review")
     
     stats["processed_for_review"] = len(processed_entries)
     processed_entries.sort(key=lambda x: datetime.strptime(x["date"], "%Y-%m-%d"))
     
-    print(f"Final stats: {processed_entries}")
+    # print(f"Final stats: {processed_entries}")
     
     return {
         "status": "success",  # Add this
@@ -189,7 +190,7 @@ def categorize_transaction(
     
     default_account_id = default_account["id"] if default_account else None
     
-    print("DATE", date)
+    # print("DATE", date)
     # Base transaction entry
     transaction = {
         "csv_row_index": row_id,  # Change from csv_row_id

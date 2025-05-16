@@ -135,12 +135,12 @@ async def save_transaction_route(transaction: TransactionEntry):
     Receives a processed transaction entry from the frontend (which originated from the CSV)
     and saves it to the appropriate Notion database.
     """
-    print("aaaaaaaaaaaaaaaaaaa")
-    print("Received transaction for saving:", transaction.dict()) # For debugging
+    # print("aaaaaaaaaaaaaaaaaaa")
+    # print("Received transaction for saving:", transaction.dict()) # For debugging
     try:
         result = None
         notion_response_data = None # To store the actual Notion response
-        print("Saving transaction:", transaction) # For debugging
+        # print("Saving transaction:", transaction) # For debugging
         if transaction.type == "expense":
             # Prepare payload for create_expense
             payload = ExpenseCreatePayload(
