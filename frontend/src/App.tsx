@@ -480,7 +480,7 @@ return <div className="loading-overlay"><div>Loading initial application data...
 return (
 <div className="app-wrapper">
 <header className="app-header">
-<h1>Notion CSV Uploader</h1>
+<h1>Notion Finance OS Uploader</h1>
 </header>
 
 <main className="container">
@@ -499,25 +499,6 @@ return (
         {isProcessingCsv ? 'Processing...' : 'Process CSV with Backend'}
       </button>
     </section>
-
-    {uploadStats && (
-      <section className="section card stats-section">
-        <h3>CSV Processing Stats</h3>
-        <ul>
-          <li>Total Rows in CSV: <strong>{uploadStats.total_rows_in_csv}</strong></li>
-          <li>Already Loaded (in CSV): <strong>{uploadStats.already_loaded_in_csv}</strong></li>
-          <li>New Entries for Review: <strong>{uploadStats.processed_for_review}</strong></li>
-          <li>Detected Types:
-            <ul>
-                <li>Expenses: {uploadStats.expenses_found}</li>
-                <li>Incomes: {uploadStats.incomes_found}</li>
-                <li>Transfers: {uploadStats.transfers_found}</li>
-                <li>Unknown: {uploadStats.unknown_type}</li>
-            </ul>
-          </li>
-        </ul>
-      </section>
-    )}
 
     {processedEntries.length > 0 && currentEntryData && (
       <section className="section card entry-form-section">
