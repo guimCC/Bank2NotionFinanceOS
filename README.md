@@ -42,6 +42,12 @@ This step highly depends on how your bank exports data, how it formats this outp
 - In the first lines, modify the `UPPERCASE_VARIABLES` to those suitting your needs.
 - Feel free to check the `categorize_transaction` function which applies this logic, and modify it fitting your needs.
 
+**Categorization**:
+- Below the variables on the previous step, you will find both `EXPENSE_KEYWORDS` and `INCOME_KEYWORDS` dicts.
+- Feel free to add as many filters as you want. These are basic string matching conditions, in the format: `'lowercase_substring':'notion expense type name (case sensitive)'`. For example: `'carrefour'':'Groceries'`
+
+As mentioned, these are very basic logics, but work very effectively, at least in my case. Feel free to modify the code to make room for more advanced categorization techniques (maybe a **ML Approach**?)
+
 ### Backend
 #### Create venv
 Working with `python 3.10.12`
