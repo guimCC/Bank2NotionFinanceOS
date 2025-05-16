@@ -12,28 +12,22 @@ from .notionAPI import (
     list_income_types, list_subscriptions, list_debts
 )
 
-# Configuration for categorization rules
+###################### TYPE OF MOVEMENTS ######################
+
+MAIN_ACCOUNT = "Main Account Name" # Notion name of the main account
+CARD = "TARGETA" # Entries starting with this (card tranasactions) are expenses
+BIZUM_TO = "BIZUM A" # Entries starting with this (Bizum sent) are expenses
+BIZUM_FROM = "BIZUM DE" # Entries starting with this (Bizum received) are transfers
+TRANSFER = "TRASPAS" # Entries starting with this (transfer) are transfers, sometimes income
+SALARY = "NOMINA" # Entries starting with this (salary) are income
+INCOME = "INGRES" # Entries starting with this (income) are transfers, sometimes income
+
+######################## KEYWORDS FOR CATEGORIZATION ######################
 EXPENSE_KEYWORDS = {
-    'rally': 'Gasofa',
-    'trenes': 'Transportation',
-    'condis': 'Groceries',
-    'moneynet': 'Coffee',
-    'frankfurt': 'Restaurant',
-    'jimman': 'Party',
-    'aramark': 'Coffee',
-    'bar': 'Restaurant',
-    '(saf)': 'Health - Gym - Beauty',
-    'perruquers': 'Health - Gym - Beauty',
-    'uber': 'Restaurant',
-    'donald': 'Restaurant',
-    'facultat': 'Coffee',
-    'vending': 'Coffee',
-    'cafe': 'Coffee',
+    'lowercase_query': 'Tyoe',
 }
 
 INCOME_KEYWORDS = {
-    'nomina': 'Salary',
-    'traspas': 'Transfer',
 }
 
 DEFAULT_EXPENSE_TYPE = None  # Will be set dynamically
@@ -47,7 +41,7 @@ def init_defaults():
     # Get accounts
     accounts = list_accounts()
     # Set default account to Caixa Enginyers if exists, otherwise first account
-    DEFAULT_ACCOUNT = next((acc for acc in accounts if acc["name"] == "Caixa Enginyers"), 
+    DEFAULT_ACCOUNT = next((acc for acc in accounts if acc["name"] == MAIN_ACCOUNT), 
                            accounts[0] if accounts else None)
     
     # Get expense types
@@ -150,8 +144,8 @@ def process_csv(contents: bytes, original_filename: str) -> Dict:
     # print(f"Final stats: {processed_entries}")
     
     return {
-        "status": "success",  # Add this
-        "message": f"Successfully processed {len(processed_entries)} entries.",  # Add this
+        "status": "success",
+        "message": f"Successfully processed {len(processed_entries)} entries.",
         "entries": processed_entries,
         "stats": stats
     }
@@ -185,7 +179,7 @@ def categorize_transaction(
     month_id = get_month_from_date(date, months)
     
     # Find default account (Caixa Enginyers)
-    default_account = next((acc for acc in accounts if acc["name"] == "Caixa Enginyers"), 
+    default_account = next((acc for acc in accounts if acc["name"] == MAIN_ACCOUNT), 
                           accounts[0] if accounts else None)
     
     default_account_id = default_account["id"] if default_account else None
@@ -205,18 +199,18 @@ def categorize_transaction(
     # DETERMINE TRANSACTION TYPE AND DETAILS
     
     # 1. Check for expense patterns
-    if (concept.startswith("TARGETA") and amount < 0) or (concept.startswith("BIZUM A") and amount < 0) or (concept.startswith("R") and amount < 0):
+    if (concept.startswith(CARD) and amount < 0) or (concept.startswith(BIZUM_TO) and amount < 0):
         # It's an expense
         expense_type_id = find_expense_type(concept, expense_types)
         
         # Extract name from TARGETA concept
         name = ""
-        if concept.startswith("TARGETA"):
+        if concept.startswith(CARD):
             # Example: "TARGETA *1234 ... RESTAURANT NAME"
             match = re.search(r'TARGETA \*\d+ (.*)', concept)
             if match:
                 name = match.group(1)
-        elif concept.startswith("BIZUM A"):
+        elif concept.startswith(BIZUM_TO):
             # Example: "BIZUM A: PERSON NAME"
             match = re.search(r'BIZUM A: (.*)', concept)
             if match:
@@ -238,7 +232,7 @@ def categorize_transaction(
         }
         
     # 2. Check for income patterns  
-    elif (concept.startswith("TRASPAS") or concept.startswith("NOMINA")) and amount > 0:
+    elif (concept.startswith(TRANSFER) or concept.startswith(SALARY)) and amount > 0:
         # It's an income
         income_type_id = find_income_type(concept, income_types)
         
@@ -250,7 +244,7 @@ def categorize_transaction(
         }
         
     # 3. Check for transfer patterns
-    elif concept.startswith("BIZUM DE") and amount > 0 or concept.startswith("INGRES") and amount > 0:
+    elif concept.startswith(BIZUM_FROM) and amount > 0 or concept.startswith(INCOME) and amount > 0:
         # It's a transfer (return)
         name = ""
         # Example: "BIZUM DE: PERSON NAME"
@@ -354,7 +348,7 @@ def fix_number_format(value_str: str) -> float:
     value_str = value_str.replace(',', '.')
     
     # If there are multiple dots, treat all but the last as thousand separators
-    parts = value_str.split('.')
+    parts = value_str.split(',')
     if len(parts) > 2:  # More than one dot exists
         integer_part = ''.join(parts[:-1])  # Join all parts except the last
         decimal_part = parts[-1]            # Last part is the decimal
