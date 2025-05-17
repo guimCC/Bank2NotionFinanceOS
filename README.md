@@ -61,11 +61,10 @@ Extra pages under **Navigation**:
 
 Download your transaction data as `.csv` and ensure it's in this format:
 
-
-`DATE,CONCEPT,IMPORT,LOADED`
-
-`2025-05-09,TARGETA *7333 CONCEPT, -42.42,`
-
+```
+DATE,CONCEPT,IMPORT,LOADED
+2025-05-09,TARGETA *7333 CONCEPT, -42.42,
+```
 
 Make sure:
 - Date format is correct.
